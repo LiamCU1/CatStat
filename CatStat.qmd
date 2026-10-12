@@ -1,5 +1,5 @@
 ---
-title: "CatStat"
+title: "CatStat Setup"
 author: "Liam CU"
 ---
 
@@ -10,3 +10,98 @@ Quarto enables you to weave together content and executable code into a finished
 ```{r}
 1 + 1
 ```
+
+## Setup
+
+```{r}
+library(tidyverse)
+library(socviz)
+library(DT)
+```
+
+Bringing in data exported from the BiosphereFutures database. I name my export files by date (in YYMMDD format); here, `export-date` determines which file we want to read from.
+
+```{r}
+export.date <- "260826"
+export.filename <- paste0("~/CatStat/Data/Scenarios-Export-", export.date, ".csv")
+bf <- read.csv(export.filename, header=TRUE)
+```
+
+It's nice to change the column names to be shorter and more manageable. In doing so, it's necessary to consider that the export file's column names might be in an unexpected order. `match` and `gsub` help us handle that possibility.
+
+```{r}
+
+colnames.og <- c("ID", "Thematic page(s)", "Title", "Permalink", "Date Contributed", "Region", "Country", "Subnational Region", "Latitude", "Longitude", "Case Contributor", "Contributor Role", "Project Website", "Intro", "Description", "Impact", "Project Year", "Time Horizon", "Sustainable Development Goals (SDGs)", "Ecosystem(s)", "Scale", "Method(s)", "Output(s)", "Participants included", "Theme(s)", "IPBES Scenario Type(s)", "Resource 1 (Reference)", "Resource 1 (Link)", "Resource 2 (Reference)", "Resource 2 (Link)", "Resource 3 (Reference)", "Resource 3 (Link)")
+
+# The import process converts the parentheses in the column names to periods. So I'll repeat that conversion for my column name vector
+
+colnames.og <- gsub("[\\(\\) ]", ".", colnames.og) 
+
+# We'll reorder the column names in case the file has a different order. 
+
+# I find the column order in a roundabout way to guard against the case where the file does not contain all of the columns listed above
+
+colnames.order.inv <- match(names(bf), colnames.og)
+colnames.order <- match( C(1:length(colnames.order.inv)), colnames.order.inv)
+
+colnames.short <- c("id", "thm.pg", "title", "link", "date", "region", "country", "subnat", "lat", "lon", "case.contributor", "contributor.role", "website", "intro", "desc", "impact", "year", "horizon", "sdgs", "eco", "scale", "methods", "outputs", "participants", "themes", "ipbes.type", "ref1", "ref1.link", "ref2", "ref2.link", "ref3", "ref3.link")
+
+names(bf) <- colnames.short[colnames.order]
+```
+
+# Topic 1
+
+\[Goal and assignment\]
+
+## What I did
+
+My intention is to plot proportions for the multiple-select and single-choice options in the database.
+
+The multiple-select options are as follows:
+
+- Sustainable Development Goal(s)
+
+- Ecosystem(s)
+
+- Scale
+
+- Method(s)
+
+- Output(s)
+
+- Participants included
+
+- IPBES Scenario Type(s)
+
+(Note: Theme(s) and Thematic page(s) might also be in this category, but I'm excluding them for now because they are optional)
+
+```{r}
+fields.multi <- c("sdgs", "eco", "scale", "methods", "outputs", "participants", "ipbes.type")
+source("1_multiselect_to_binary.R")
+bf.multi <- multi_occ(bf, fields.multi, missing = TRUE, shorten = TRUE)
+```
+
+The single-choice fields are:
+
+- Region
+
+- Contributor Role
+
+(Note: Although "Country" and "Project year" could also hypothetically be represented as single-choice fields, the possible options are not (usefully) bounded)
+
+```{r}
+fields.single <- c("region", "contributor.role")
+bf.single <- bf[fields.single]
+bf.choice <- cbind(bf.multi, bf.single)
+```
+
+## Visualization
+
+```{r}
+dt.options <- list(scrollX = TRUE, pageLength = 5, lengthMenu = c(5, 10, 20))
+datatable(bf.choice, options = dt.options)
+```
+
+## Discussion
+
+## Questions and next Steps
