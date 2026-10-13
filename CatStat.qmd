@@ -22,7 +22,7 @@ library(DT)
 Bringing in data exported from the BiosphereFutures database. I name my export files by date (in YYMMDD format); here, `export-date` determines which file we want to read from.
 
 ```{r}
-export.date <- "260826"
+export.date <- "261013"
 export.filename <- paste0("~/CatStat/Data/Scenarios-Export-", export.date, ".csv")
 bf <- read.csv(export.filename, header=TRUE)
 ```
@@ -41,8 +41,11 @@ colnames.og <- gsub("[\\(\\) ]", ".", colnames.og)
 
 # I find the column order in a roundabout way to guard against the case where the file does not contain all of the columns listed above
 
-colnames.order.inv <- match(names(bf), colnames.og)
-colnames.order <- match( C(1:length(colnames.order.inv)), colnames.order.inv)
+# Actually it doesn't seem necessary to invert the order. I've commented out that part
+
+colnames.order <- match(names(bf), colnames.og)
+
+#colnames.order <- match( C(1:length(colnames.order.inv)), colnames.order.inv)
 
 colnames.short <- c("id", "thm.pg", "title", "link", "date", "region", "country", "subnat", "lat", "lon", "case.contributor", "contributor.role", "website", "intro", "desc", "impact", "year", "horizon", "sdgs", "eco", "scale", "methods", "outputs", "participants", "themes", "ipbes.type", "ref1", "ref1.link", "ref2", "ref2.link", "ref3", "ref3.link")
 
@@ -91,8 +94,27 @@ The single-choice fields are:
 
 ```{r}
 fields.single <- c("region", "contributor.role")
-bf.single <- bf[fields.single]
+source("1_tidy_singlechoice.R")
+bf.single <- bf[fields.single] |> tidy_regions()
 bf.choice <- cbind(bf.multi, bf.single)
+```
+
+To find the proportion of cases that tick each value, we'll need different procedures for the multiple-selection and single-choice fields. For the multiple-selection columns, the proportion will be given by the mean.
+
+```{r}
+lowprop <- 0.05
+bf.multi.prop <- bf.multi |> subset(select = -c(id, short.title)) |>
+  sapply(function(x) mean(x, na.rm = TRUE))
+```
+
+For the single-choice columns, the proportion will be given by `table()`. This function creates a contingency table, which will be relevant later. For now, feeding the function one column simply returns a 1-dimensional vector of counts. For the proportions, we divide that vector by the total count (the length of the original column).
+
+```{r}
+bf.single.prop <- find_singles_prop(bf.single)
+bf.prop <- append(bf.multi.prop, bf.single.prop)
+bf.low <- bf.prop[bf.prop < lowprop] |> names()
+
+bf.low
 ```
 
 ## Visualization
