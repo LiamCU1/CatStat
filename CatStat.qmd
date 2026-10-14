@@ -1,15 +1,9 @@
 ---
-title: "CatStat Setup"
+title: "CatStat Lab Notebook"
 author: "Liam CU"
 ---
 
-## Quarto
-
-Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
-
-```{r}
-1 + 1
-```
+## Intro
 
 ## Setup
 
@@ -84,13 +78,13 @@ source("1_multiselect_to_binary.R")
 bf.multi <- multi_occ(bf, fields.multi, missing = TRUE, shorten = TRUE)
 ```
 
-The single-choice fields are:
+The single-choice variables are:
 
 - Region
 
 - Contributor Role
 
-(Note: Although "Country" and "Project year" could also hypothetically be represented as single-choice fields, the possible options are not (usefully) bounded)
+(Note: Although "Country" and "Project year" could also hypothetically be represented as single-choice variables, the possible options are not (usefully) bounded)
 
 ```{r}
 fields.single <- c("region", "contributor.role")
@@ -99,31 +93,45 @@ bf.single <- bf[fields.single] |> tidy_regions()
 bf.choice <- cbind(bf.multi, bf.single)
 ```
 
-To find the proportion of cases that tick each value, we'll need different procedures for the multiple-selection and single-choice fields. For the multiple-selection columns, the proportion will be given by the mean.
+To find the proportion of cases that tick each variable option, I find the proportions in a separate script, creating the `bf.prop` variable. In that script, I applied different procedures for the multiple-select and single-choice fields. For the multiple-select variables, the proportions can be found using `mean`, since they are represented by 0s and 1s. For the single-choice variables, we can use `count()`.
+
+We set our threshold for notable rarity at 5%
 
 ```{r}
-lowprop <- 0.05
-bf.multi.prop <- bf.multi |> subset(select = -c(id, short.title)) |>
-  sapply(function(x) mean(x, na.rm = TRUE))
-```
-
-For the single-choice columns, the proportion will be given by `table()`. This function creates a contingency table, which will be relevant later. For now, feeding the function one column simply returns a 1-dimensional vector of counts. For the proportions, we divide that vector by the total count (the length of the original column).
-
-```{r}
-bf.single.prop <- find_singles_prop(bf.single)
-bf.prop <- append(bf.multi.prop, bf.single.prop)
-bf.low <- bf.prop[bf.prop < lowprop] |> names()
-
+lowprop <- 0.05 # The threshold for which proportions we consider "low"
+source("1_plot_proportions.R")
+bf.low <- bf.prop |> filter(prop < lowprop)
 bf.low
 ```
 
 ## Visualization
+
+This is what the data looks like after the pre-visualization wrangling.
 
 ```{r}
 dt.options <- list(scrollX = TRUE, pageLength = 5, lengthMenu = c(5, 10, 20))
 datatable(bf.choice, options = dt.options)
 ```
 
+An example of a field's option proportions split up by region.
+
+```{r}
+p <- bf.choice |> group_by(region) |> 
+  find_multifield_proportions("methods") |>
+  ggplot(mapping = aes(x = option, y = prop))
+
+p + geom_col() + facet_wrap(~ region, ncol = 2)
+```
+
+```{r}
+p <- bf.choice |> find_all_multi_proportions(fields.multi) |>
+  ggplot(mapping = aes(x = option, y = prop))
+
+p + geom_col() + facet_wrap(~ field, ncol = 3)
+```
+
 ## Discussion
+
+If I'd wanted to plot the *number of cases* that ticked each option (instead of the proportion of cases), I could have used `geom_bar`
 
 ## Questions and next Steps
