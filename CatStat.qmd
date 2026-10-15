@@ -8,6 +8,8 @@ author: "Liam CU"
 ## Setup
 
 ```{r}
+#| label: 0_library-imports
+
 library(tidyverse)
 library(socviz)
 library(DT)
@@ -16,6 +18,8 @@ library(DT)
 Bringing in data exported from the BiosphereFutures database. I name my export files by date (in YYMMDD format); here, `export-date` determines which file we want to read from.
 
 ```{r}
+#| label: 0_import-bf-data
+
 export.date <- "261013"
 export.filename <- paste0("~/CatStat/Data/Scenarios-Export-", export.date, ".csv")
 bf <- read.csv(export.filename, header=TRUE)
@@ -24,6 +28,7 @@ bf <- read.csv(export.filename, header=TRUE)
 It's nice to change the column names to be shorter and more manageable. In doing so, it's necessary to consider that the export file's column names might be in an unexpected order. `match` and `gsub` help us handle that possibility.
 
 ```{r}
+#| label: 0_arrange-file-columns
 
 colnames.og <- c("ID", "Thematic page(s)", "Title", "Permalink", "Date Contributed", "Region", "Country", "Subnational Region", "Latitude", "Longitude", "Case Contributor", "Contributor Role", "Project Website", "Intro", "Description", "Impact", "Project Year", "Time Horizon", "Sustainable Development Goals (SDGs)", "Ecosystem(s)", "Scale", "Method(s)", "Output(s)", "Participants included", "Theme(s)", "IPBES Scenario Type(s)", "Resource 1 (Reference)", "Resource 1 (Link)", "Resource 2 (Reference)", "Resource 2 (Link)", "Resource 3 (Reference)", "Resource 3 (Link)")
 
@@ -73,6 +78,8 @@ The multiple-select options are as follows:
 (Note: Theme(s) and Thematic page(s) might also be in this category, but I'm excluding them for now because they are optional)
 
 ```{r}
+#| label: 1_setup-multi-fields
+
 fields.multi <- c("sdgs", "eco", "scale", "methods", "outputs", "participants", "ipbes.type")
 source("1_multiselect_to_binary.R")
 bf.multi <- multi_occ(bf, fields.multi, missing = TRUE, shorten = TRUE)
@@ -87,6 +94,8 @@ The single-choice variables are:
 (Note: Although "Country" and "Project year" could also hypothetically be represented as single-choice variables, the possible options are not (usefully) bounded)
 
 ```{r}
+#| label: 1_setup-single-fields
+
 fields.single <- c("region", "contributor.role")
 source("1_tidy_singlechoice.R")
 bf.single <- bf[fields.single] |> tidy_regions()
@@ -98,6 +107,8 @@ To find the proportion of cases that tick each variable option, I find the propo
 We set our threshold for notable rarity at 5%
 
 ```{r}
+#| label: 1_highlight-low-proportions
+
 lowprop <- 0.05 # The threshold for which proportions we consider "low"
 source("1_plot_proportions.R")
 bf.low <- bf.prop |> filter(prop < lowprop)
@@ -109,6 +120,8 @@ bf.low
 This is what the data looks like after the pre-visualization wrangling.
 
 ```{r}
+#| label: 1_display-data-format
+
 dt.options <- list(scrollX = TRUE, pageLength = 5, lengthMenu = c(5, 10, 20))
 datatable(bf.choice, options = dt.options)
 ```
@@ -116,6 +129,8 @@ datatable(bf.choice, options = dt.options)
 An example of a field's option proportions split up by region.
 
 ```{r}
+#| label: 1_plot-proportions-by-region
+
 p <- bf.choice |> group_by(region) |> 
   find_multifield_proportions("methods") |>
   ggplot(mapping = aes(x = option, y = prop))
@@ -124,6 +139,8 @@ p + geom_col() + facet_wrap(~ region, ncol = 2)
 ```
 
 ```{r}
+#| label: 1_plot-multi-proportions
+
 p <- bf.choice |> find_all_multi_proportions(fields.multi) |>
   ggplot(mapping = aes(x = option, y = prop))
 
