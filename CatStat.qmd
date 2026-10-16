@@ -1,6 +1,7 @@
 ---
 title: "CatStat Lab Notebook"
 author: "Liam CU"
+reference-location: margin
 ---
 
 ## Intro
@@ -51,31 +52,34 @@ colnames.short <- c("id", "thm.pg", "title", "link", "date", "region", "country"
 names(bf) <- colnames.short[colnames.order]
 ```
 
-# Topic 1
+# Topic 1: First steps
 
-\[Goal and assignment\]
+My goal for this topic is to import the BF data, wrangle it into a tidy format (meaning a format legible to R's visualization processes), and plot the proportion of cases that tick the various options of our categorical variables.
+
+A note on terminology:
+
+- Case: The BF database consists of 150+ "cases," each of which corresponds to a scenario planning study.
+
+- Field: I use the term "field" to refer to the different variables tracked in the database. Title, year, date contributed, scale(s), and region are fields. I may use this term interchangeably with "variable."
+
+- Option: By definition, our categorical fields consist of various options that might apply to a given case. The SDG field has 17 options (for the 17 SDGs), our Region field has 7 options (including non-selection), etc. I refer to a case as "ticking" the options that apply to it. I may use this term interchangeably with "value."
+
+- Multiple-select vs single-choice: I refer to fields in which multiple options can be ticked as "multiple-select" fields. Variables for which only one option can be chosen are "single-choice" fields.
 
 ## What I did
 
-My intention is to plot proportions for the multiple-select and single-choice options in the database.
+**Setting up the data**
 
-The multiple-select options are as follows:
+The multiple-select fields are:
 
-- Sustainable Development Goal(s)
+|                                 |                       |
+|---------------------------------|-----------------------|
+| Sustainable Development Goal(s) | Ecosystem(s)          |
+| Scale(s)                        | Method(s)             |
+| Output(s)                       | Participants included |
+| IPBES Scenario Type(s)          |                       |
 
-- Ecosystem(s)
-
-- Scale
-
-- Method(s)
-
-- Output(s)
-
-- Participants included
-
-- IPBES Scenario Type(s)
-
-(Note: Theme(s) and Thematic page(s) might also be in this category, but I'm excluding them for now because they are optional)
+(Note: Theme(s) and Thematic page(s) might also be in this category, but I'm excluding them for now because they're optional)
 
 ```{r}
 #| label: 1_setup-multi-fields
@@ -85,11 +89,7 @@ source("1_multiselect_to_binary.R")
 bf.multi <- multi_occ(bf, fields.multi, missing = TRUE, shorten = TRUE)
 ```
 
-The single-choice variables are:
-
-- Region
-
-- Contributor Role
+The single-choice variables are Region and Contributor Role
 
 (Note: Although "Country" and "Project year" could also hypothetically be represented as single-choice variables, the possible options are not (usefully) bounded)
 
@@ -102,16 +102,32 @@ bf.single <- bf[fields.single] |> tidy_regions()
 bf.choice <- cbind(bf.multi, bf.single)
 ```
 
-To find the proportion of cases that tick each variable option, I find the proportions in a separate script, creating the `bf.prop` variable. In that script, I applied different procedures for the multiple-select and single-choice fields. For the multiple-select variables, the proportions can be found using `mean`, since they are represented by 0s and 1s. For the single-choice variables, we can use `count()`.
+**Finding the proportions**
 
-We set our threshold for notable rarity at 5%
+To find the proportion of cases that tick each variable option, I applied different procedures for the multiple-select and single-choice fields. For the multiple-select variables, the proportions can be found using `mean`, since they are represented by 0s and 1s. For the single-choice variables, we can use `count()` and divide by the total number of cases.
+
+When finding the proportions for each field, I had to decide whether to include cases missing data for that field (or `NA` values) in the total count. I decided not to include `NA`s for the multiple-select fields, because missing data usually means that the field wasn't available on the contribution form for that case. True non-selection is represented by `0` instead. For the single-choice fields (specifically region, here, as there are no `NA`s for contributor role), `NA` refers to purposeful non-selection, so I decided to include them in the count.
+
+We set our threshold for notable rarity at **5%**
+
+For the error bars, I found confidence intervals using the Wilson Score Interval, as implemented in the `npsm::wilson.ci()` method. Among confidence interval methods that presuppose the binomial distribution[^1], score interval approaches are best for small datasets. They find the interval by calculating the range of null hypotheses (assumed population proportions) for which the sample proportion would be reasonably likely (i.e. within a determined confidence level). I use the Wilson test specifically because it was suggested in [Agresti 2018](https://www.wiley.com/en-us/shop/general-introductory-statistics/an-introduction-to-categorical-data-analysis-3rd-edition-p-9781119405283).
+
+[^1]: the equivalent of the normal distribution for binary data in which individual observations can be assumed to be independent of each other. "Observations," here, means ticks for a given option between cases. More on this in the Questions section.
+
+We set our confidence level at 95%.
 
 ```{r}
 #| label: 1_highlight-low-proportions
 
 lowprop <- 0.05 # The threshold for which proportions we consider "low"
+conf <- .95 # Desired confidence level for confidence interval (1 - alpha)
+
 source("1_plot_proportions.R")
-bf.low <- bf.prop |> filter(prop < lowprop)
+bf.prop <- bf.choice |> 
+  find_all_multi_proportions(fields.multi, fields.single) |>
+  find_prop_CI(conf)
+
+bf.low <- bf.prop |> select(field, option, prop) |> filter(prop < lowprop)
 bf.low
 ```
 
@@ -126,29 +142,65 @@ dt.options <- list(scrollX = TRUE, pageLength = 5, lengthMenu = c(5, 10, 20))
 datatable(bf.choice, options = dt.options)
 ```
 
-An example of a field's option proportions split up by region.
+Here's an example of one field's proportions split up by region. I'm using methods for my example because it looks nice.
 
-```{r}
+```{r, fig.height = 5}
 #| label: 1_plot-proportions-by-region
 
-p <- bf.choice |> group_by(region) |> 
+bf.reg.prop <- bf.choice |> group_by(region) |> 
   find_multifield_proportions("methods") |>
-  ggplot(mapping = aes(x = option, y = prop))
+  find_prop_CI(conf)
 
-p + geom_col() + facet_wrap(~ region, ncol = 2)
+p <- bf.reg.prop |> ggplot(mapping = aes(x = option, y = prop))
+
+p + geom_col() + facet_wrap(~ region, ncol = 2) + 
+  labs(x = "Methods ticked", y = "Proportion", title = "Prevalence of method options",
+       subtitle = "by case region") +
+  geom_errorbar(aes(ymin = ci.low, ymax = ci.hi), color = "orange")
 ```
 
-```{r}
+And here's the proportions for all of our categorical variables, across all cases in the database.
+
+```{r, fig.height = 8, fig.width = 7}
 #| label: 1_plot-multi-proportions
 
-p <- bf.choice |> find_all_multi_proportions(fields.multi) |>
-  ggplot(mapping = aes(x = option, y = prop))
+p <- bf.prop |> ggplot(mapping = aes(x = option, y = prop))
 
-p + geom_col() + facet_wrap(~ field, ncol = 3)
+p + geom_col() + facet_wrap(~ field, ncol = 3, scales = "free_x") + 
+  labs(x = "Case features", y = "Proportion", 
+       title = "How many cases tick each option", 
+       subtitle = "of BF's multiple-select fields") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = .5)) +
+  geom_errorbar(aes(ymin = ci.low, ymax = ci.hi), color = "orange")
+  
 ```
 
 ## Discussion
 
-If I'd wanted to plot the *number of cases* that ticked each option (instead of the proportion of cases), I could have used `geom_bar`
+There are no real surprises on the low-proportion options. It's perhaps interesting that the "Open waters" ecosystem (sea) is *so* much rarer than "Coastal and marine areas" (cst), but it makes sense that scenario planning efforts would focus more on areas that have more human presence (even though human activity certainly has material impacts on remote areas as well).
+
+I was surprised at the very different distribution of methods among cases set in International Waters (or that didn't choose a region) - until I remembered that those regions are low-proportion. It's probably best to understand that particular variance as noise, stemming from the fact that those regions are dominated by, like, 3 studies each. This dynamic also holds for outputs and participants. There's a lot more variation between regions for ecosystems and scales. For SDGs, there was obvious variation for the Europe and Central Asia region: the proportions of SDG 11 and 13 in this region even sit outside the error bars for the other regions.
+
+I'll note that confidence intervals on contributor role don't mean anything, right? Among the broader population of scenario planning case studies (not yet submitted to the BF database), the "contributor role" variable has no value, because there is not yet a contributor. In other words, this variable only applies to cases that have already been sampled - there is no "population" proportion.
 
 ## Questions and next Steps
+
+To get the options displayed in the right order, I'd need to recode the data as factors. I don't know what impact that will have on all the code I've written.
+
+I'm concerned about how long it takes for R to process my code, especially since I'm not doing anything particularly complex. Is there anything obvious I can do to make my code less expensive?
+
+Is it alright to use the binomial distribution (for my CI calculation)? The binomial distribution requires the "observations" (the cases, here) be independent of each other. It is clear that independence does not hold between options: we have seen correlations both within (e.g. between the "mapping" and "modelling" methods) and between (e.g. the "mapping" method and the "maps" output) fields. It might be possible that the cases have some dependence too - for example, one could argue that a high profile case being submitted to the database could encourage people doing similar work to submit their cases. Or, more straightforwardly, one could point to the influx of UREx, Radical Ocean Futures, or African Futures cases. However, I don't know how to proceed with analysis without assuming independence anyway.
+
+How does the non-randomness of our dataset affect my CI considerations?
+
+Is there anything I need to worry about, regarding my decisions to ignore or not ignore `NA`s for the single-choice and multiple-select data, respectively?
+
+## Appendix
+
+Please see the following scripts to examine my code:
+
+- 1_multiselect_to_binary.R contains all my wrangling of the multiple-select data (into columns for each option, in which "ticks" are represented by 1s (and non-ticks are 0s).
+
+- 1_tidy_singlechoice.R contains my wrangling for the single-choice data. This entirely means shortening the names for the region options.
+
+- 1_plot_proportions.R handles the proportion and confidence interval calculations.
