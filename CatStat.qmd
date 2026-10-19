@@ -197,10 +197,119 @@ Is there anything I need to worry about, regarding my decisions to ignore or not
 
 ## Appendix
 
-Please see the following scripts to examine my code:
+You can find my code on [Github](https://github.com/LiamCU1/CatStat). The following scripts are relevant:
 
 - 1_multiselect_to_binary.R contains all my wrangling of the multiple-select data (into columns for each option, in which "ticks" are represented by 1s (and non-ticks are 0s).
 
+```{r}
+#| echo: fenced
+
+# highlight
+
+# field: a string which must be one of the column names defined above
+# missing: binary, determines whether function will add a column of 0s for missing values
+# shorten: binary, determines whether value names will be shortened in output df
+# returns a data frame containing binary-presence data for each 
+# value of field per record
+occ <- function(bfdat, field, missing = FALSE, shorten = TRUE){
+  bf_f <- bfdat |>
+    select(id, matches(field))
+  names(bf_f)[2] <- "f"
+  bf_f <- bf_f |>
+    mutate(field_split = strsplit(f, split = "|", fixed = TRUE)) |> #mutate adds another column with the split values
+    mutate(f = NULL) |>
+    unnest(field_split, keep_empty = TRUE) |> # unnest creates a new row for 
+    # each value in the field list
+    mutate(value = 1) # this is preparation for the pivot - because I'm looking for 
+  # simple binary-presence data, there's no "value" to feed into pivot_wider. 
+  # I've appended a column of 1s so that it has at least that
+  
+  na.ids <- filter(bf_f, is.na(field_split))[["id"]] # Record NA rows for later
+  bf_f <- bf_f |> filter_out(is.na(field_split)) |> 
+    pivot_wider(names_from = field_split, values_fill = 0)
+  
+  # Now we'll bring in the value names
+  valnm <- import_value_names(field, fields.filenames)
+  valnm.og <- valnm[["orig"]]
+  valnm.sht <- valnm[["short"]]
+  
+  bf_fnoid <- bf_f |> mutate(id = NULL)
+  valnm.order <- match(valnm.og, names(bf_fnoid))
+  
+  # Check if there are any possible values not present in the data
+  if(NA %in% valnm.order){
+    missind <- which(valnm.order %in% NA) # indices of missing values
+    missvals <- valnm.og[missind]
+    if(missing){
+      # add column of 0s
+      for(val in missvals){
+        bf_fnoid <- bf_fnoid |> mutate("{val}" := 0)
+      }
+    }else{
+      # remove missing value from valnm
+      valnm.og <- valnm.og[! missind]
+      valnm.sht <- valnm.sht[! missind]
+    }
+  }
+  bf_fnoid <- bf_fnoid[valnm.og] # reorder columns
+  
+  if(shorten){
+    names(bf_fnoid) <- paste0(field, ".", valnm.sht)
+  }
+  
+  bf_fnas <- occ_nas(na.ids, colnames(bf_fnoid))
+  
+  bf_f <- cbind(bf_f["id"], bf_fnoid)
+  bf_f <- rbind(bf_f, bf_fnas) |> arrange(id)
+  
+  return(bf_f)
+}
+```
+
 - 1_tidy_singlechoice.R contains my wrangling for the single-choice data. This entirely means shortening the names for the region options.
 
-- 1_plot_proportions.R handles the proportion and confidence interval calculations.
+  ```{r}
+  #| echo: fenced
+
+  # highlight
+
+  tidy_singles <- function(bfdat, long, short){
+  for(i in 1:length(long)){
+    bfdat[bfdat == long[i]] <- short[i]
+  }
+  return(bfdat)
+  }
+  ```
+
+- 1_plot_proportions.R handles the proportion and confidence interval calculations
+
+  ```{r}
+  #| echo: fenced
+
+  # highlight
+
+  find_multifield_proportions <- function(bfdat, field){
+    field.pre <- paste0(field, ".")
+    bf.f <- bfdat |> select(starts_with(field.pre))
+    # Exclude NAs in count. For any record, any option being NA means all must be
+    f1 <- names(bf.f)[1]
+    field.n <- bf.f |> filter(!is.na(.data[[f1]])) |> nrow()
+    props <- bf.f |> summarise(across(everything(), 
+                                      ~mean (.x, na.rm = TRUE)))
+    
+    props <- props |> pivot_longer(starts_with(field.pre), names_to = "option", 
+                                   names_prefix = field.pre, values_to = "prop") |>
+      mutate(field = field, .before = option) |> 
+      mutate(n = field.n, .before = option)
+    
+    return(props)
+  }
+
+  find_prop_CI <- function(bfprops, conf){
+    bfprops <- bfprops |> mutate(ct = prop * n) |> 
+      rowwise() |> mutate(ci = list(wilson.ci(ct, n, conf.level = conf)), 
+                          ci.low = ci[[1]], ci.hi = ci[[2]]) |>
+      mutate(ct = NULL, ci = NULL)
+    return(bfprops)
+  }
+  ```
