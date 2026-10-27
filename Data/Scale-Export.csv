@@ -1,8 +1,8 @@
 ﻿Term ID,Term Name,Short Name,Term Slug
-453,A small area of a landscape (&lt;100 ha or &lt;1km on edge),1.sml.area,a-small-area-of-a-landscape-100-ha-or-1km-on-edge
-421,A small landscape or city scape (e.g. city center &lt;10 km on edge),2.sml.lnd,a-small-landscape-or-city-scape-e-g-city-center-10-km-on-edge
-440,A large landscape or city scape (e.g. Sao Paulo &lt;50 km on edge),3.lg.lnd,a-large-landscape-or-city-scape-e-g-sao-paulo-50-km-on-edge
-456,Small country (e.g. Trinidad or Cape Verde 50-200 km on edge),4.sml.count,small-country-e-g-trinidad-or-taiwan-50-200-km-on-edge
-460,Medium country (e.g. Zimbabwe or Germany 201-2000 km),5.med.count,medium-country-e-g-zimbabwe-or-germany-201-2000-km
-461,International Region (e.g. Western European or Africa &gt;2000 km on edge),6.int,international-region-e-g-western-european-or-africa-2000-km-on-edge
-450,Global,7.glb,global
+453,A small area of a landscape (&lt;100 ha or &lt;1km on edge),1.small-area,a-small-area-of-a-landscape-100-ha-or-1km-on-edge
+421,A small landscape or city scape (e.g. city center &lt;10 km on edge),2.small-landscape,a-small-landscape-or-city-scape-e-g-city-center-10-km-on-edge
+440,A large landscape or city scape (e.g. Sao Paulo &lt;50 km on edge),3.large-landscape,a-large-landscape-or-city-scape-e-g-sao-paulo-50-km-on-edge
+456,Small country (e.g. Trinidad or Cape Verde 50-200 km on edge),4.small-country,small-country-e-g-trinidad-or-taiwan-50-200-km-on-edge
+460,Medium country (e.g. Zimbabwe or Germany 201-2000 km),5.medium-country,medium-country-e-g-zimbabwe-or-germany-201-2000-km
+461,International Region (e.g. Western European or Africa &gt;2000 km on edge),6.international,international-region-e-g-western-european-or-africa-2000-km-on-edge
+450,Global,7.global,global

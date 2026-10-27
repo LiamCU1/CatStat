@@ -91,14 +91,15 @@ bf.multi <- multi_occ(bf, fields.multi, missing = TRUE, shorten = TRUE)
 
 The single-choice variables are Region and Contributor Role
 
-(Note: Although "Country" and "Project year" could also hypothetically be represented as single-choice variables, the possible options are not (usefully) bounded)
+(Note: Although "Country" and "Project year" could also hypothetically be represented as single-choice variables, the possible options are not (usefully) bounded.
 
 ```{r}
 #| label: 1_setup-single-fields
 
 fields.single <- c("region", "contributor.role")
 source("1_tidy_singlechoice.R")
-bf.single <- bf[fields.single] |> tidy_regions()
+# bf.single is defined in the script sourced above.
+
 bf.choice <- cbind(bf.multi, bf.single)
 ```
 
@@ -311,5 +312,62 @@ occ <- function(bfdat, field, missing = FALSE, shorten = TRUE){
                           ci.low = ci[[1]], ci.hi = ci[[2]]) |>
       mutate(ct = NULL, ci = NULL)
     return(bfprops)
+  }
+  ```
+
+# Topic 2: Contingency Tables
+
+My goal for this topic is to perform independence tests, calculate residuals, and make mosaic plots for both my single-choice and multiple-response data.
+
+Another note on terminology: in their text about the MRCV (multiple-response categorical variables) R package, Koziol and Bilder (2014) use the word "item" to describe the options within a multiple-response variable. I will adopt that language from now.
+
+## What I did
+
+First, I added a decade variable to the single choice table, using `cut()` to convert the "year" variable into an ordered factor. I added a function to `1_tidy_singlechoice.R` to handle this.
+
+Then I created a contingency table for region and decade. I verified that this looks as expected in the console. I'll apply a X^2^ test of independence. Here, this test's null hypothesis assumes that the cells are independent of each other: that, in the broader population of potential cases, the probability that a case was conducted in Africa in the 2010s is determined fully by (a) how many cases were conducted in the 2010s, and (b) how many cases were conducted in Africa. We find:
+
+```{r}
+source("2_single-choice_mosaic.R")
+test.vars <- c("decade", "region")
+bf.single |> singles_x2_test(test.vars)
+```
+
+Although this X-squared value may seem large, our 3 x 7 table has many degrees of freedom. According to [this table](https://numiqo.com/tutorial/chi-square-distribution), the critical value (with a confidence level of 95%) for 12 degrees of freedom is \~ X^2^ = 21. So we do not reject the null hypothesis for these variables - there is no statistically significant relationship.
+
+The `chisq.test()` function throws a warning because there are cells in the contingency table with a count lower than 5. These are the previously noted low-proportion region items ("International Waters" and "None"), as well as a new low-proportion decade item (the 2000s). What happens if I combine the 2000s with the 2010s?
+
+\[Try aggregating the table before rerunning the test\]
+
+```{r}
+
+# Necessary code, as above
+```
+
+## Visualizations
+
+## Discussion
+
+## Questions and next steps
+
+What is a sparse matrix?
+
+## Appendix
+
+- 1_tidy_singlechoice.R now creates a "decade" column as well.
+
+  ```{r}
+  #| echo: fenced
+
+  # Takes: a column of years (string or numeric)
+  # Returns: a column of decades (factors)
+  years_to_decades <- function(years){
+    decade.levels <- c("2000s", "2010s", "2020s")
+    d.breaks <- c(2000, 2010, 2020, 2030)
+    
+    decades <- years |> as.numeric() |> 
+      cut(breaks = d.breaks, labels = decade.levels, right = FALSE)
+    
+    return(decades)
   }
   ```

@@ -1,18 +1,18 @@
 ﻿Term ID,Term Name,Short Name,Term Slug
-451,1 No Poverty,1.pov,1-no-poverty
-452,2 Zero Hunger,2.hngr,2-zero-hunger
-441,3 Good Health and Well-being,3.health,3-good-health-and-well-being
-603,4 Quality Education,4.ed,4-quality-education
-455,5 Gender Equality,5.geneq,5-gender-equality
-424,6 Clean Water and Sanitation,6.san,6-clean-water-and-sanitation
-457,7 Affordable and Clean Energy,7.en,7-affordable-and-clean-energy
-426,8 Decent Work and Economic Growth,8.econ,8-decent-work-and-economic-growth
-444,9 Industry,9.ind,9-industry
-443,10 Reduced Inequality,10.ineq,10-reduced-inequality
-442,11 Sustainable Cities and Communities,11.suscom,11-sustainable-cities-and-communities
-425,12 Responsible Consumption and Production,12.prod,12-responsible-consumption-and-production
-422,13 Climate Action,13.clmac,13-climate-action
-454,14 Life Below Water,14.wtr,14-life-below-water
-423,15 Life on Land,15.land,15-life-on-land
+451,1 No Poverty,1.no-poverty,1-no-poverty
+452,2 Zero Hunger,2.no-hunger,2-zero-hunger
+441,3 Good Health and Well-being,3.good-health,3-good-health-and-well-being
+603,4 Quality Education,4.education,4-quality-education
+455,5 Gender Equality,5.gender,5-gender-equality
+424,6 Clean Water and Sanitation,6.sanitation,6-clean-water-and-sanitation
+457,7 Affordable and Clean Energy,7.energy,7-affordable-and-clean-energy
+426,8 Decent Work and Economic Growth,8.work,8-decent-work-and-economic-growth
+444,9 Industry,9.industry,9-industry
+443,10 Reduced Inequality,10.low-inequality,10-reduced-inequality
+442,11 Sustainable Cities and Communities,11.sustainabile-cities,11-sustainable-cities-and-communities
+425,12 Responsible Consumption and Production,12.consumption,12-responsible-consumption-and-production
+422,13 Climate Action,13.climate-action,13-climate-action
+454,14 Life Below Water,14.life-water,14-life-below-water
+423,15 Life on Land,15.life-land,15-life-on-land
 446,16 Peace Justice and Strong Institutions,16.peace,16-peace-justice-and-strong-institutions
-447,17 Partnerships to achieve the Goals,17.partnr,17-partnerships-to-achieve-the-goals
+447,17 Partnerships to achieve the Goals,17.partnerships,17-partnerships-to-achieve-the-goals

@@ -1,12 +1,12 @@
 ﻿Term ID,Term Name,Short Name,Term Slug
-514,Researchers,rsrch,researchers
-515,Residents,resi,residents
-517,Public policy decision-makers,dec,public-policy-decision-makers
-523,Artists,art,artists
-524,Youth/children,yth,youth-children
-533,Business representatives,busi,business-representatives
-536,Farmers/foresters/fisherfolk,fff,farmers-foresters-fisherfolk
-538,n/a,na,n-a
-539,Indigenous groups,indg,indigenous-groups
-548,Civil society organizations,civ,civil-society-organizations
-594,Political leaders,lead,political-leaders
+514,Researchers,research,researchers
+515,Residents,resident,residents
+517,Public policy decision-makers,decision.maker,public-policy-decision-makers
+523,Artists,artist,artists
+524,Youth/children,youth,youth-children
+533,Business representatives,business,business-representatives
+536,Farmers/foresters/fisherfolk,farmer.forest.fisher,farmers-foresters-fisherfolk
+538,n/a,none,n-a
+539,Indigenous groups,indigenous,indigenous-groups
+548,Civil society organizations,civil.society,civil-society-organizations
+594,Political leaders,politic.lead,political-leaders
