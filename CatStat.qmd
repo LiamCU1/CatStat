@@ -329,45 +329,226 @@ Then I created a contingency table for region and decade. I verified that this l
 
 ```{r}
 source("2_single-choice_mosaic.R")
-test.vars <- c("decade", "region")
-bf.single |> singles_x2_test(test.vars)
+single.test.vars <- c("decade", "region")
+bf.single |> singles_x2_test(single.test.vars)
 ```
 
-Although this X-squared value may seem large, our 3 x 7 table has many degrees of freedom. According to [this table](https://numiqo.com/tutorial/chi-square-distribution), the critical value (with a confidence level of 95%) for 12 degrees of freedom is \~ X^2^ = 21. So we do not reject the null hypothesis for these variables - there is no statistically significant relationship.
+Although this X-squared value may seem large, our 3 x 7 table has many degrees of freedom. According to [this table](https://numiqo.com/tutorial/chi-square-distribution), the critical value (with a confidence level of 95%) for 12 degrees of freedom is \~ X^2^ = 21. So we do not reject the null hypothesis for these variables - there is no evidence of a statistically significant relationship.
 
 The `chisq.test()` function throws a warning because there are cells in the contingency table with a count lower than 5. These are the previously noted low-proportion region items ("International Waters" and "None"), as well as a new low-proportion decade item (the 2000s). What happens if I combine the 2000s with the 2010s?
 
-\[Try aggregating the table before rerunning the test\]
+```{r}
+library(forcats)
+
+bf.single.combinedec <- bf.single |> mutate(decade = fct_collapse(decade, 
+                                   before2020 = c("2000s", "2010s")))
+
+bf.single.combinedec |> singles_x2_test(single.test.vars)
+  
+```
+
+Here we get a lower X^2^ value of 7.666. Because the lower number of rows decreases the degrees of freedom (df = 6), and the higher cell counts increase the power, the p-value is actually lower than before at `p = 0.2636`. This still isn't enough evidence to reject the independence hypothesis.
+
+What happens when we look at the multiple-response variables?
+
+The `MRCV` (multiple response categorical variables) package enables independence tests on multiple-response data by creating larger contingency tables (in which each cell becomes a 2x2 table, relating the presence/absence of the row item to the presence/absence of the column item) and adapting the basic statistical tests to account for the extra complexity. Normal independence tests do not apply to multiple-response data because these tests do not account for the dependencies that likely exist within variables in MRCV data.
+
+For now, I'll use their Rao-Scott adjustment, since I think our dataset is too small for bootstrapping to be the best option.
+
+We apply the independence test to the IPBES type (row) and the Methods (column).
+
+```{r}
+source("2_mrcv_test.R")
+mrtestvars <- c("ipbes.type", "methods")
+
+bf.ipb.method.test <- bf.choice |> bf_mrcv_test(mrtestvars)
+
+bf.ipb.method.test$rs2$S.rs2
+bf.ipb.method.test$rs2$p.value.rs2
+```
+
+We get a X^2^ value of \~27.4 (df \~ 14), which is above the critical value of 26.8. The p-value is \~.0014, prompting us to reject the independence hypothesis for these variables: it appears that studies do choose their methods based on their intended intervention in the policy cycle. Makes sense.
+
+How would it come out different if we naively applied the normal independence test to multiple-response data? Let's try it with IPBES type and method. I'll use `MRCV::marginal.table()` to create a "normal" contingency table to perform the test on.
 
 ```{r}
 
-# Necessary code, as above
+bf.ipb.method.marginal <- bf.choice |> 
+  select(starts_with(mrtestvars)) |> na.omit() |> data.matrix() |>
+  crossprod()
+
+# Make sure there are no repeat items between rows and cols
+
+Inum <- bf.choice |> select(starts_with(mrtestvars[1])) |> ncol()
+
+bf.ipb.method.naive <- bf.ipb.method.marginal[1:Inum, -(1:Inum)] |> 
+  chisq.test()
+
+paste0("X^2 = ", bf.ipb.method.naive$statistic)
+paste0("p = ", bf.ipb.method.naive$p.value)
 ```
+
+The naive version of the test gives a X^2^ value \~20.3. With 18 degrees of freedom, that only gives a p-value = 0.315, which is far too large to reject the null hypothesis at 95% confidence. It seems the MRCV package's independence test is more likely to lead us to reject H_0 than a naive application of a chi-squared test.
+
+We've tested whether these cases' proportions of methods are independent of their IPBES type (likely not), but I'm also curious whether a case's methods choices can be considered independent of its other methods. We know that there are patterns in the methods (e.g. cases that use modelling are also likely to use mapping), but I wonder if we can use `MI.test()` to see if there's a significant relationship.
+
+Answer: we can't, really. `MI.test()` needs the names of the data frame's columns to be unique. And when I adapted the functions I wrote to get around that, I got absurd values like p = 6e-11. I don't think I understand how or why that happened. If I had to guess, though, it's something to do with the degrees of freedom in that test being 2, likely because the item-response table is mirrored across the diagonal. But I don't know.
+
+Leaving the code as-is below. The modified MRCV test function code will be commented out in `2_mrcv_test.R`.
+
+```{r}
+
+#| echo: fenced
+
+# mrtestvars <- c("methods", "methods")
+# bf.method.test <- bf.choice |> bf_mrcv_test(mrtestvars)
+# 
+# bf.method.test$rs2$S.rs2
+# bf.method.test$rs2$p.value.rs2
+
+```
+
+Now on to the visualizations.
 
 ## Visualizations
 
+A mosaic plot displaying residuals from the Decade x Region test.
+
+```{r, fig.width = 7}
+
+bf.single.combinedec |> 
+  singles_mosaic(single.test.vars)
+```
+
+A ComplexUpset plot of all present intersections of different methods
+
+```{r, fig.width = 12}
+
+source("2_upset.R")
+
+bf.choice |> bf_mr_upset("methods")
+
+```
+
 ## Discussion
+
+The mosaic plot is more or less what we'd expect. The number of cases per region doesn't change very much before/after 2020, except that we saw a dramatic increase in cases focusing on International Waters. However, that dramatic increase is from 1 case to 5 cases (should probably be 6, but Radical Ocean Futures doesn't have a region right now). A quintupling is enough to trigger a statistically significant residual in the math, but that does seem like an artifact of how few International Waters cases we have in general. I think we can safely call Region and Decade independent.
+
+(The mosaic is a bit ugly with the title overlapping the column labels, but just rotating the labels took me almost an hour, I decided moving the title isn't worth my time right now)
+
+The ComplexUpset plot is pretty interesting. With how much "Workshop" dominates the dataset, it's interesting that the method is deployed on its own in only 10% of the data set (still the most common intersection, but not by very much). It's also interesting to see that if a method wasn't deployed in tandem with a workshop, it was almost always because it was in tandem with surveys or (less commonly) models. The 4 exception cases were either art-based methods, desktop studies, or both. These intersections seem to indicate several very different kinds of "workshop" underlying the workshop category - that might be worth looking closer at.
 
 ## Questions and next steps
 
-What is a sparse matrix?
+I appreciated how useful the mosaic plot is for locating where the dependence between single-choice variables is strongest. I didn't see an equivalent for the residuals in the MRCV package descriptions/paper. The vignettes for the ComplexUpset package imply it can be used for that kind of test, so I'd really like to see how it could work.
+
+The output of `MRCV::item.response.table()` is a matrix-thing of class "tabular." I found this data very difficult to work with, as in I couldn't figure out how to do anything with it besides display it. I'd wanted to use the output to feed into other things (such as the naive chi-squared test), but it wasn't possible. Do I need to look deeper into that data type?
+
+I need to figure out how to do anything with the strucplot framework. It was a relief to see that ComplexUpset seems to use ggplot's grammar of graphics.
+
+Something weird is happening with my quarto file. When I try to run code chunks in Rstudio, I'll get errors that appear to be from other code chunks, or even errors from the YAML heading at the top of the document: "Error in -title : invalid argument to unary operator." It still renders the html fine. Don't know what to make of that, besides that maybe this document is getting too long. Might be worth making different .qmd documents for each topic.
 
 ## Appendix
 
-- 1_tidy_singlechoice.R now creates a "decade" column as well.
+1.  1_tidy_singlechoice.R now creates a "decade" column as well.
 
-  ```{r}
-  #| echo: fenced
+    ```{r}
+    #| echo: fenced
 
-  # Takes: a column of years (string or numeric)
-  # Returns: a column of decades (factors)
-  years_to_decades <- function(years){
-    decade.levels <- c("2000s", "2010s", "2020s")
-    d.breaks <- c(2000, 2010, 2020, 2030)
-    
-    decades <- years |> as.numeric() |> 
-      cut(breaks = d.breaks, labels = decade.levels, right = FALSE)
-    
-    return(decades)
-  }
-  ```
+    # Takes: a column of years (string or numeric)
+    # Returns: a column of decades (factors)
+    years_to_decades <- function(years){
+      decade.levels <- c("2000s", "2010s", "2020s")
+      d.breaks <- c(2000, 2010, 2020, 2030)
+      
+      decades <- years |> as.numeric() |> 
+        cut(breaks = d.breaks, labels = decade.levels, right = FALSE)
+      
+      return(decades)
+    }
+    ```
+
+2.  2_single-choice.mosaic.R just calculates contingency tables and passes them on to `vcd::mosiac()` or `chisq.test()`
+
+```{r}
+#| echo: fenced
+
+# vars: a character vector of length 2, naming the variables we want to cross-tabulate
+# var order: c(<rows>, <columns>)
+# outputs: a contingency table
+singles_contingency2 <- function(bfdata, vars){
+  vformula <- paste0(vars, collapse = " + ")
+  xformula <- as.formula(paste("~", vformula))
+  return(xtabs(xformula, bfdata))
+}
+
+# outputs: an object, the output of a chi squared test
+singles_x2_test <- function(bfdata, vars){
+  xt <- singles_contingency2(bfdata, vars)
+  return(chisq.test(xt))
+}
+
+# outputs: a plot object, giving a mosaic test with the specifications given below
+singles_mosaic <- function(bfdata, vars){
+  xt <- singles_contingency2(bfdata, vars)
+  xr <- chisq.test(xt)$stdres
+  p <- mosaic(xt, gp = shading_Friendly, residuals = xr, 
+              residuals_type = "Std\nresiduals", labeling = labeling_border(rot_labels = c(90,0,0,90), 
+                                                                            just_labels = c("left", "center", "center", "center")))
+  return(p)
+}
+
+```
+
+3.  2_mrcv_test.R passes on data to the core functions from `MRCV`
+
+```{r}
+
+#| echo: fenced
+
+# bfdata = data frame in observation format (0s and 1s for mrcvs)
+# vars = character vector, giving the names of 2 variables to be compared
+# returns item response table
+bf_mrcv_irtable <- function(bfdata, vars){
+  Inum <- bfdata |> select(starts_with(vars[1])) |> ncol()
+  Jnum <- bfdata |> select(starts_with(vars[2])) |> ncol()
+  bf.ir <- bfdata |> select(starts_with(vars)) |>
+    item.response.table(Inum, Jnum)
+  return(bf.ir)
+}
+
+# bfdata = data frame in observation format (0s and 1s for mrcvs)
+# vars = character vector, giving the names of 2 variables to be compared
+# test.type = string specifying testing approach (see MRCV::MI.test)
+# returns marginal independent test results for vars in vars
+bf_mrcv_test <- function(bfdata, vars, test.type = "rs2"){
+  Inum <- bfdata |> select(starts_with(vars[1])) |> ncol()
+  Jnum <- bfdata |> select(starts_with(vars[2])) |> ncol()
+  bf.test <- bfdata |> select(starts_with(vars)) |> 
+    MI.test(Inum, Jnum, type = test.type)
+  return(bf.test)
+}
+
+```
+
+4.  2_upset.R formats data for the ComplexUpset graph and passes it on
+
+```{r}
+
+#| echo: fenced
+
+# bfdata = data frame in observation format (0s and 1s)
+# field = string specifying which MR variable to plot intersections of
+# min.size, num.intersectinos, keep_empty_groups: parameters for ComplexUpset::upset
+# Returns a ComplexUpset plot of the intersectinos for field
+bf_mr_upset <- function(bfdata, field, min.size = 0, num.intersections = NULL, keep_empty_groups = FALSE){
+  # Working on a subset of rows that are complete
+  bf.up <- bfdata |> select(starts_with(field)) |> na.omit() |> 
+    mutate(across(everything(), ~ .x == 1)) # converting 0s and 1s to binary
+  items <- bf.up |> colnames()
+  p <- upset(bf.up, items, name = field, min_size = min.size, 
+             n_intersections = num.intersections, keep_empty_groups = keep_empty_groups)
+  return(p)
+}
+
+```
