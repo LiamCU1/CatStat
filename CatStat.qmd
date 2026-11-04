@@ -552,3 +552,51 @@ bf_mr_upset <- function(bfdata, field, min.size = 0, num.intersections = NULL, k
 }
 
 ```
+
+# Topic 3: Evaluating graphics
+
+My goal for this topic is to establish design standards for my graphs in the rest of the course, and build a foundation for the modelling I'll do later by sorting the rest of the course's analyses.
+
+## Design standards
+
+I'll need to pick a common theme and color palette for my ggplots. The theme `ggthemes::economist()` worked pretty well when presenting the urban data last week - it's clean and undistracting. Maybe I can move forward using that.
+
+For color palettes, I'll use something from `paletteer`. I like the way `ggsci::nrc_npg` ([link](https://emilhvitfeldt.github.io/r-color-palettes/discrete/ggsci/nrc_npg/index.html)) looks, but I can't verify that it works for colorblind readers. I guess I'll use palettes from the `colorBlindness` package. Maybe [paletteMartin](https://emilhvitfeldt.github.io/r-color-palettes/discrete/colorBlindness/paletteMartin/index.html) for nominal, [ModifiedSpectralScheme11Steps](https://emilhvitfeldt.github.io/r-color-palettes/discrete/colorBlindness/ModifiedSpectralScheme11Steps/) for diverging, [LightBlue2DarkBlue10Steps](https://emilhvitfeldt.github.io/r-color-palettes/discrete/colorBlindness/LightBlue2DarkBlue10Steps/) for ordinal.
+
+I should use Cleveland Dot Plots for simple proportions. I think ComplexUpset was great for the interactions - and the counts for the interactions get pretty close to 0, so it should be fine to keep using column charts.
+
+The mosaic plot seemed to work well for plotting the weight of intersections of different single-choice variables. I just need to figure out how to avoid text overlaps, and figure out what text is worth notating on the cells.
+
+There's also the question of legends - what do I need to specify there?
+
+And the question of order. For the nominal variables, it should be fine to plot them big-to-small, e.g. highest proportion to lowest proportion. The ordinal variables (decade, scale) should almost always be plotted in order, except maybe for the ComplexUpset scale plots (since those don't plot values for the *items*, they plot values for the intersections).
+
+## Analyses
+
+I almost feel like the demo's call to sort these analyses into Tredennick et al's model purposes is a trick question. The goal of my efforts in this course is data exploration. Isn't it immaterial whether or not any given analysis can be described as inference, since I can do paired-model-comparisons for arbitrarily many hypotheses?
+
+**Generalized Linear Models**: Inference. We are choosing alternative models to understand how selected covariates influence whether a given option is checked or not.
+
+**Loglinear models**: Inference. We are formalizing hypotheses into alternative models, this time to understand associations between variables.
+
+**Joint models:** (Bonus: bayesian network) Inference, comparing between nested models?
+
+**Multiple correspondence analysis**: Exploration. The goal of MCA is to make the data more tractable, to make it easier to explore. Furthermore, we're going to run the technique as many times as it takes to get something good. However, it's not clear to me whether/how this method produces hypotheses, as in Tredennick et al's framework.
+
+**Model-based orientation** (gllvm ordination): Exploration. Running through a family of models to find the one that fits the data best is exactly the approach Trebennick describes. Not clear enough on what a "binomial family" is yet to say what relationships we're exploring, exactly, but since it's also dimensionality reduction I suppose the answer will be the same as above.
+
+**Distance-based clustering**: Exploration. We're looking for groups that might exist. Making any statements about the world outside of our dataset would require an independent study.
+
+**Latent class analysis**: Exploration? Running through many models with different numbers of types does not seem to satisfy inference's requirements for a narrow number of alternative models.
+
+**Formal concept analysis**: Exploration? These archetypes are also hypotheses, right? And I can't identify any clear alternative models.
+
+**Classification trees**: Prediction. A bit funny for prediction, since we're running it on the same dataset we used to find the categories we're predicting. However, Trebennick et al's framework only guides us to be careful when doing this. I suppose we'll need to create folds in the data set (between training and validation sets)? Do some cross-validation?
+
+## Visualizations
+
+## Discussion
+
+## Questions and next steps
+
+as
