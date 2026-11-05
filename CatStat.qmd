@@ -96,9 +96,9 @@ The single-choice variables are Region and Contributor Role
 ```{r}
 #| label: 1_setup-single-fields
 
-fields.single <- c("region", "contributor.role")
+fields.single <- c("year", "contributor.role", "region")
 source("1_tidy_singlechoice.R")
-# bf.single is defined in the script sourced above.
+# bf.single is redefined in the script sourced above
 
 bf.choice <- cbind(bf.multi, bf.single)
 ```
@@ -563,11 +563,24 @@ I'll need to pick a common theme and color palette for my ggplots. The theme `gg
 
 For color palettes, I'll use something from `paletteer`. I like the way `ggsci::nrc_npg` ([link](https://emilhvitfeldt.github.io/r-color-palettes/discrete/ggsci/nrc_npg/index.html)) looks, but I can't verify that it works for colorblind readers. I guess I'll use palettes from the `colorBlindness` package. Maybe [paletteMartin](https://emilhvitfeldt.github.io/r-color-palettes/discrete/colorBlindness/paletteMartin/index.html) for nominal, [ModifiedSpectralScheme11Steps](https://emilhvitfeldt.github.io/r-color-palettes/discrete/colorBlindness/ModifiedSpectralScheme11Steps/) for diverging, [LightBlue2DarkBlue10Steps](https://emilhvitfeldt.github.io/r-color-palettes/discrete/colorBlindness/LightBlue2DarkBlue10Steps/) for ordinal.
 
-I should use Cleveland Dot Plots for simple proportions. I think ComplexUpset was great for the interactions - and the counts for the interactions get pretty close to 0, so it should be fine to keep using column charts.
+```{r}
+library(paletteer)
 
-The mosaic plot seemed to work well for plotting the weight of intersections of different single-choice variables. I just need to figure out how to avoid text overlaps, and figure out what text is worth notating on the cells.
+nom.colors <- paletteer::paletteer_d("colorBlindness::paletteMartin")
+div.colors <- paletteer::paletteer_d("colorBlindness::ModifiedSpectralScheme11Steps")
+ord.colors <- paletteer::paletteer_d("colorBlindness::LightBlue2DarkBlue10Steps")
+bf.green <- "#198038"
 
-There's also the question of legends - what do I need to specify there?
+bf.theme <- ggthemes::theme_economist()
+
+ord.multivars <- c("scale")
+```
+
+I should use Cleveland Dot Plots for simple proportions. For everything but the ordinal variables, we'll want to plot them in decreasing order (based on value). Dotplots are preferable because they compare position, while barplots compare length - so it's easier to change the axes without being misleading. This is helpful when many of the values are reasonably far from 0. I think ComplexUpset was great for the interactions - and the counts for the interactions get pretty close to 0, so it should be fine to keep using columns.
+
+The mosaic plot seemed to work well for plotting the weight of intersections of different single-choice variables. I just need to figure out how to avoid text overlaps, and figure out what text is worth notating on the cells. I'm thinking counts, since my argument about my non-conclusion for the decade/region relationship depends on the counts being small.
+
+There's also the question of legends - what do I need to specify there? Probably just anytime I'm using colors to denote something. Otherwise, the plots themselves should be enough. I do probably need to abbreviate my titles/subtitles, though. Many of the things I say there will be clear from context to everyone reading the graph.
 
 And the question of order. For the nominal variables, it should be fine to plot them big-to-small, e.g. highest proportion to lowest proportion. The ordinal variables (decade, scale) should almost always be plotted in order, except maybe for the ComplexUpset scale plots (since those don't plot values for the *items*, they plot values for the intersections).
 
@@ -595,8 +608,90 @@ I almost feel like the demo's call to sort these analyses into Tredennick et al'
 
 ## Visualizations
 
-## Discussion
+Try out plotting the proportions as a cleveland dot plot. Let's try doing the colors by region to see if that works
+
+```{r, fig.width = 12, fig.height = 12}
+
+bf.reg.all.prop <- bf.choice |> group_by(region) |> 
+  find_all_multi_proportions(fields.multi, c("contributor.role", "decade"))
+# Can't include region among the single fields because it'll break rbind (r doesn't make a new grouping column for the grouping variable)
+
+p <- ggplot(data = bf.reg.all.prop, mapping = 
+              aes(x = prop, y = reorder(option, prop, na.rm = TRUE),
+                  color = region))
+
+p + geom_jitter(width = 0, height = .1) + facet_wrap(~field, ncol = 3, scales = "free_y") +
+  labs(title = "Proportions of mrcv items colored by region", x = "proportion",
+       y = NULL) + scale_fill_paletteer_d(nom.colors) +
+  bf.theme
+```
+
+My approach for color seems to work fine (and it picks the right palette). But let's try a graph that's easier to read: faceting without the region thing.
+
+```{r, fig.width = 12, fig.height = 12}
+
+p <- ggplot(data = bf.prop, mapping = 
+              aes(x = prop, y = reorder(option, prop, na.rm = TRUE)))
+
+p + geom_point(color = bf.green) + facet_wrap(~field, ncol = 3, scales = "free_y") +
+  labs(title = "Proportions of mrcv items", x = "proportion",
+       y = NULL) + bf.theme
+
+```
+
+I don't know how to make it so that only the ordinal variables sort by level instead of proportion while faceting. (Something to figure out later?) But to see how that looks, let's do a cleveland plot for scale.
+
+```{r}
+
+p <- ggplot(data = find_multifield_proportions(bf.choice, "scale"), 
+            mapping = aes(x = prop, y = option))
+
+p + geom_point(color = bf.green) + 
+  labs(title = "Proportions of scale items", x = "proportion",
+       y = NULL) + bf.theme
+```
+
+Looks good!
+
+Now let's see if we can modify the colors and labels of our mosaic plot.
+
+```{r, fig.width = 7}
+single.test.vars <- c("decade", "region")
+
+bf.single.combinedec |> 
+  singles_mosaic(single.test.vars)
+
+```
+
+Ok, I've got the labels moved. But it looks like trying to change the colors is really quite hard. Let's say for now that the red/blue colors that `shading_Friendly` uses by default are good enough.
 
 ## Questions and next steps
 
-as
+I'm not sure that I've really established a consistent approach to the graphs that I can use in the future. I've made some decisions about color and theme. However, I'm not skilled enough to apply those standards to plots that don't use the grammar of graphics straightforwardly. `strucplot` doesn't use the grammar of graphics at all, and `ComplexUpset` has a lot going on under the hood that I struggled to modify.
+
+Maybe there's another way I can think about completing this task?
+
+## Appendix
+
+Updated mosaic code:
+
+```{r}
+
+#| echo: fenced
+
+# outputs: a plot object, giving a mosaic test with the specifications given below
+singles_mosaic <- function(bfdata, vars){
+  xt <- singles_contingency2(bfdata, vars)
+  xr <- chisq.test(xt)$stdres
+  p <- mosaic(xt, gp = shading_Friendly, residuals = xr, 
+              residuals_type = "Std\nresiduals", 
+              labeling = labeling_values(value_type = "residuals", digits = 1,
+                                         rot_labels = c(90, 0, 90, 90),
+                                         just_labels = c("left", "center", "right", "center"),
+                                         tl_varnames = c(TRUE, TRUE),
+                                         tl_labels = c(TRUE, FALSE)
+              ))
+  return(p)
+}
+
+```
