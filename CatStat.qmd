@@ -663,7 +663,7 @@ bf.single.combinedec |>
 
 ```
 
-Ok, I've got the labels moved. But it looks like trying to change the colors is really quite hard. Let's say for now that the red/blue colors that `shading_Friendly` uses by default are good enough.
+Ok, I've got the labels moved (somehow my changes work on the mosaic above (in topic 2) but not here). But it looks like trying to change the colors is really quite hard. Let's say for now that the red/blue colors that `shading_Friendly` uses by default are good enough.
 
 ## Questions and next steps
 
